@@ -25,6 +25,8 @@
     <h2>Add Movie</h2>
     <form method="POST" @submit.prevent="addMovie">
       <input type="text" v-model="newMovieName" placeholder="Movie Name" required>
+      <input type="text" v-model="newMovieDesc" placeholder="Movie Description" required>
+      <input type="file" ref="fileInput" @change="handleFileChange">
       <input type="submit" value="Add">
     </form>
 
@@ -68,6 +70,8 @@
           newShowMovieId: '',
           newShowStartTime: '',
           newShowTickets: '',
+          selectedFile: null,
+          newMovieDesc: ''
         };
       },
       created() {
@@ -126,16 +130,19 @@
             });
         },
         addMovie() {
-          axios.post('/api/add_movie', {
-            movieName: this.newMovieName
-          })
-            .then(response => {
-              console.log(response.data);
-            })
-            .catch(error => {
-              console.error(error);
-            });
-        },
+            const formData = new FormData();
+            formData.append('movieName', this.newMovieName);
+            formData.append('movieDesc', this.newMovieDesc);
+            formData.append('file', this.selectedFile);
+
+            axios.post('/api/add_movie', formData)
+              .then(response => {
+                console.log(response.data);
+              })
+              .catch(error => {
+                console.error(error);
+              });
+          },
         addShow(TheatreId) {
           axios.post('/api/add_show', {
             showMovieId: this.newShowMovieId,
@@ -161,7 +168,9 @@
               console.error(error);
             });
         },
-
+        handleFileChange(event) {
+          this.selectedFile = event.target.files[0];
+        },
       }
     });
   </script>

@@ -7,13 +7,14 @@ from wtforms.validators import InputRequired, Length, ValidationError
 from werkzeug.utils import secure_filename
 from flask_bcrypt import *
 from datetime import datetime
-# from sqlalchemy.sql import func
 from functools import wraps
+import os
 
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SECRET_KEY'] = 'MAD2PROJECT'
+app.config['UPLOAD_FOLDER'] = 'static\\uploads'
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
@@ -43,6 +44,7 @@ class Movies(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     img = db.Column(db.String(300))
+    desc = db.Column(db.String(1000))
 
 class Theatres(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -308,11 +310,16 @@ def remove_theatre():
 
 @app.route('/api/add_movie', methods=['POST'])
 def add_movie():
-    data = request.json
+    data = request.form
 
     movie_name = data.get('movieName')
+    movie_desc = data.get('movieDesc')
+    file = request.files['file']
+    filename = secure_filename(file.filename)
 
-    new_movie = Movies(name=movie_name)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    new_movie = Movies(name=movie_name, desc=movie_desc, img=filename)
     db.session.add(new_movie)
     db.session.commit()
 
