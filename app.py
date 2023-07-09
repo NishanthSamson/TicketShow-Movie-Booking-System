@@ -184,6 +184,11 @@ def account():
 def booking():
     return render_template('booking.html')
 
+@login_required
+@app.route('/mybookings', methods = ['GET'])
+def mybookings():
+    return render_template('mybookings.html')
+
 @app.route('/api/movies', methods=['GET'])
 def get_movies():
     movies = Movies.query.all()
@@ -366,6 +371,22 @@ def remove_show():
     }
 
     return jsonify(response)
+
+@app.route('/api/my_bookings', methods = ['GET'])
+def my_bookings():
+    user_id = current_user.id
+    bookings = Bookings.query.filter_by(user_id = user_id).all()
+    booking_list = []
+    for booking in bookings:
+        bk_data = {
+            'movie': booking.show.movie.name,
+            'theatre': booking.theatre.name,
+            'tickets': booking.nos,
+            'starttime': booking.show.starttime,
+            'img': booking.show.movie.img
+        }
+        booking_list.append(bk_data)
+    return jsonify(booking_list)
 
 def serialize_shows(shows):
     serialized_shows = []
