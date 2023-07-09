@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+  <div id="app">
+    <h2>Theatres</h2>
+    <ul>
+      <li v-for="theatre in theatres">
+        { theatre.name }
+        <form method="POST" :action="removeTheatre(theatre.id)">
+          <input type="submit" value="Remove">
+        </form>
+      </li>
+    </ul>
+
+    <h2>Add Theatre</h2>
+    <form method="POST" @submit.prevent="addTheatre">
+      <input type="text" v-model="newTheatreName" placeholder="Theatre Name" required>
+      <input type="submit" value="Add">
+    </form>
+
+    <h2>Add Movie</h2>
+    <form method="POST" @submit.prevent="addMovie">
+      <input type="text" v-model="newMovieName" placeholder="Movie Name" required>
+      <input type="submit" value="Add">
+    </form>
+
+    <div v-for="theatre in theatres">
+      <h2>Shows for { theatre.name }</h2>
+      <ul>
+        <li v-for="show in theatre.shows">
+          { show.movie.name } - { show.starttime }
+          <form method="POST" :action="removeShow(show.id)">
+            <input type="submit" value="Delete">
+          </form>
+        </li>
+      </ul>
+
+      <h3>Add Show</h3>
+      <form method="POST" @submit.prevent="addShow(theatre.id)">
+        <select v-model="newShowMovieId" required>
+          <option v-for="movie in movies" :value="movie.id">{ movie.name }</option>
+        </select>
+        <input type="datetime-local" v-model="newShowStartTime" required>
+        <input type="number" v-model="newShowTickets" required>
+        <input type="submit" value="Add">
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  <script>
+    new Vue({
+      el: '#app',
+      delimiters: ['{', '}'],
+      data() {
+        return {
+          movies: [],
+          theaters: [],
+          shows: [],
+          newTheatreName: '',
+          newMovieName: '',
+          newShowMovieId: '',
+          newShowStartTime: '',
+          newShowTickets: '',
+        };
+      },
+      created() {
+        this.fetchMovies();
+        this.fetchTheaters();
+        this.fetchShows()
+      },
+      methods: {
+        fetchMovies() {
+          axios.get('/api/movies')
+            .then(response => {
+              this.movies = response.data;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        fetchTheaters() {
+          axios.get('/api/theaters')
+            .then(response => {
+              this.theatres = response.data;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        fetchShows() {
+          axios.get('/api/shows')
+            .then(response => {
+              this.shows = response.data;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        addTheatre() {
+          axios.post('/api/add_theatre', {
+            theatreName: this.newTheatreName
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        removeTheatre(TheatreId) {
+          axios.post('/api/remove_theatre/', {
+            theatreId: TheatreId
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        addMovie() {
+          axios.post('/api/add_movie', {
+            movieName: this.newMovieName
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        addShow(TheatreId) {
+          axios.post('/api/add_show', {
+            showMovieId: this.newShowMovieId,
+            startTime: this.newShowStartTime,
+            tickets: this.newShowTickets,
+            theatreId: TheatreId
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        removeShow(ShowId) {
+          axios.post('/api/remove_show/', {
+            showId: ShowId
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+
+      }
+    });
+  </script>
+
+</body>
+</html>

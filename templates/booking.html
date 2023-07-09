@@ -1,0 +1,105 @@
+<div id="app">
+<template>
+    <div>
+      <label for="movie">Select Movie:</label>
+      <select id="movie" v-model="selectedMovie">
+        <option v-for="movie in movies" :key="movie.id" :value="movie.id">{ movie.name }</option>
+      </select>
+
+      <label for="date">Select Date:</label>
+      <input type="date" id = "date" v-model.date="selectedDate" />
+  
+      <label for="tickets">Number of Tickets:</label>
+      <input type="number" id="tickets" v-model.number="numTickets" />
+  
+      <button @click="fetchShows()">Check for available shows</button>
+    </div>
+
+    <div v-show="showAvailableShows">
+      <div v-for="theatre in theaters":key="theatre.id">
+        <h2>Shows for { theatre.name }</h2>
+        <ul>
+          <li v-for="show in shows" :key="show.id" v-if="show.theatreId === theatre.id">
+            { show.starttime }
+            <form @submit.prevent="bookTickets(show.id, theatre.id)">
+              <input type="submit" value="Book">
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </template>
+</div>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  
+  <script>
+    new Vue({
+      el: '#app',
+      delimiters: ['{', '}'],
+      data() {
+        return {
+          movies: [],
+          theaters: [],
+          shows: [],
+          selectedMovie: null,
+          selectedDate: null,
+          numTickets: 0,
+          showAvailableShows: false
+        };
+      },
+      created() {
+        this.fetchMovies();
+        this.fetchTheaters();
+      },
+      methods: {
+        fetchMovies() {
+          axios.get('/api/movies')
+            .then(response => {
+              this.movies = response.data;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        fetchTheaters() {
+          axios.get('/api/theaters')
+            .then(response => {
+              this.theaters = response.data;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        fetchShows() {
+          axios.post('/api/allshows', {
+            movieId: this.selectedMovie,
+            date: this.selectedDate,
+            numTickets: this.numTickets
+          })
+            .then(response => {
+              this.shows = response.data;
+              this.showAvailableShows = true;
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        bookTickets(ShowId, TheatreId) {
+          axios.post('/api/book_tickets', {
+            showId: ShowId,
+            movieId: this.selectedMovie,
+            theatreId: TheatreId,
+            numTickets: this.numTickets
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        }
+      }
+    });
+  </script>
+  
