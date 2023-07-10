@@ -303,7 +303,7 @@ def remove_theatre():
 
     theatre_id = data.get('theatreId')
 
-    theatre = Theatres.query.get_or_404(theatre_id)
+    theatre = Theatres.query.filter_by(id=theatre_id).first()
     db.session.delete(theatre)
     db.session.commit()
 
@@ -362,7 +362,7 @@ def remove_show():
 
     show_id = data.get('showId')
 
-    show = Shows.query.get_or_404(show_id)
+    show = Shows.query.filter_by(id=show_id).first()
     db.session.delete(show)
     db.session.commit()
 
