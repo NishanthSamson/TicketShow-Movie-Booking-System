@@ -1,13 +1,10 @@
 from flask import Flask, render_template, request, url_for, redirect, session, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import InputRequired, Length, ValidationError
+from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user
+from flask_security.utils import hash_password
 from werkzeug.utils import secure_filename
 from flask_bcrypt import *
 from datetime import datetime
-from functools import wraps
 import os
 
 
@@ -15,30 +12,41 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SECRET_KEY'] = 'MAD2PROJECT'
 app.config['UPLOAD_FOLDER'] = 'static\\uploads'
+app.config['SECURITY_PASSWORD_SALT'] = 'SALT'
 db = SQLAlchemy(app)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.username != 'admin':
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
   
+class RolesUsers(db.Model):
+    __tablename__ = "roles_users"
+    id = db.Column(db.Integer(), primary_key=True)
+    user_id = db.Column("user_id", db.Integer(), db.ForeignKey("user.id"))
+    role_id = db.Column("role_id", db.Integer(), db.ForeignKey("role.id"))
+
+
+class Role(db.Model, RoleMixin):
+    __tablename__ = "role"
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
 
 class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), nullable=False, unique=True)
-    password = db.Column(db.String(80), nullable=False)
-    img = db.Column(db.String(300))
+    __tablename__ = "user"
+    id = db.Column(db.Integer(), primary_key=True)
+    email = db.Column(db.String(255), unique=True)
+    username = db.Column(db.String(255), unique=True, nullable=True)
+    password = db.Column(db.String(255), nullable=False)
+    last_login_at = db.Column(db.DateTime())
+    current_login_at = db.Column(db.DateTime())
+    last_login_ip = db.Column(db.String(100))
+    current_login_ip = db.Column(db.String(100))
+    login_count = db.Column(db.Integer)
+    active = db.Column(db.Boolean())
+    premium = db.Column(db.Boolean())
+    fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
+    confirmed_at = db.Column(db.DateTime())
+    roles = db.relationship(
+        "Role", secondary="roles_users", backref=db.backref("users", lazy="dynamic")
+    )
 
 class Movies(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -71,113 +79,66 @@ class Shows(db.Model):
     theatre_id = db.Column(db.Integer, db.ForeignKey('theatres.id'))
     theatre = db.relationship('Theatres', backref=db.backref('shows'))
 
-    
-    
-
-class RegisterForm(FlaskForm):
-    username = StringField(validators=[
-                           InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Username"})
-
-    password = PasswordField(validators=[
-                             InputRequired(), Length(min=8, max=20)], render_kw={"placeholder": "Password"})
-
-    submit = SubmitField('Register')      
-
-    def validate_username(self, username):
-        existing_user_username = User.query.filter_by(
-            username=username.data).first()
-        if existing_user_username:
-            raise ValidationError(
-                'That username already exists. Please choose a different one.')
-
-class LoginForm(FlaskForm):
-    username = StringField(validators=[
-                           InputRequired(), Length(min=1, max=20)], render_kw={"placeholder": "Username"})
-
-    password = PasswordField(validators=[
-                             InputRequired(), Length(min=1, max=20)], render_kw={"placeholder": "Password"})
-
-    submit = SubmitField('Login')
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)
 
 
-class PostForm(FlaskForm):
-    number = StringField(validators=[
-                           InputRequired(), Length(min=4, max=100)], render_kw={"placeholder": "Number of tickets"})
-    
-    submit = SubmitField('Post')
 
-@app.before_first_request
-def create_tables():
-    with app.app_context():
-        db.create_all()
-        a = User.query.filter_by(username='admin').first()
-        b = Movies.query.get(1)
-        c = Theatres.query.get(1)
-    if(not a):
-        hashed_password = generate_password_hash('123')
-        new_user = User(username='admin', password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        
+with app.app_context():
+    db.create_all()
+    a = user_datastore.find_user(email='admin@gmail.com')
+    b = Movies.query.get(1)
+    c = Theatres.query.get(1)
+    if not a:
+        user_datastore.create_user(email='admin@gmail.com', password=hash_password('123'))
     if(b == None):
         new_movie = Movies(name='oppenheimer')
         db.session.add(new_movie)
         db.session.commit()
-
-       
     if(c == None):
         new_theatre = Theatres(name='INOX')
         db.session.add(new_theatre)
         db.session.commit()
 
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/admin/dashboard', methods=['GET', 'POST'])
-@admin_required
-def admin():
-    uname = current_user.username
-    return render_template('dashboard.html',uname=uname)
-
-@ app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegisterForm()
-
-    if form.validate_on_submit():
-        hashed_password = generate_password_hash(form.password.data)
-        new_user = User(username=form.username.data, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('login'))
-
-    return render_template('register.html', form=form)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    global uname
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user:
-            if check_password_hash(user.password, form.password.data):
-                login_user(user)
-                name = form.username.data
-                session['username'] = name
-                uname = session.get('username')
-                return redirect(url_for('account'))
-    return render_template('login.html', form=form)
-
-@app.route('/logout', methods=['GET', 'POST'])
-@login_required
+@app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+
+@app.route('/admin/dashboard', methods=['GET', 'POST'])
+def admin():
+    uname=current_user.email
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
+    return render_template('dashboard.html',uname=uname)
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    if request.method == 'POST':
+        user_datastore.create_user(
+            email=request.form.get('email'),
+            password=hash_password(request.form.get('password'))
+        )
+        db.session.commit()
+
+        return redirect(url_for('account'))
+
+    return render_template('register.html')
+
 
 @app.route('/account')
 @login_required
 def account():
-    return render_template('account.html', uname=uname)
+    return render_template('account.html', uname=current_user.email)
+
+# @app.route('/profile')
+# @login_required
+# def profile():
+#     return render_template('profile.html')
 
 
 @app.route('/booking', methods=['GET','POST'])
@@ -185,8 +146,9 @@ def account():
 def booking():
     return render_template('booking.html')
 
-@login_required
+
 @app.route('/mybookings', methods = ['GET'])
+@login_required
 def mybookings():
     return render_template('mybookings.html')
 
@@ -274,13 +236,6 @@ def all_shows():
             }
             shows_list.append(show_data)
     return jsonify(shows_list)
-
-
-# @app.route('/profile')
-# @login_required
-# def profile():
-#     username = current_user.username
-#     return f'Welcome, {username}!'
 
 @app.route('/api/add_theatre', methods=['POST'])
 def add_theatre():

@@ -1,4 +1,4 @@
-<head>
+<!-- <head>
 <style>
   /* Style for login container */
 .login-container {
@@ -115,4 +115,22 @@
     </div>
   </form>
   <div class="error"></div>
-</div>
+</div> -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form method="POST" action="{{ url_for('security.login') }}">
+        {{ login_form.hidden_tag() }}
+        {{ login_form.username.label }}<br>
+        {{ login_form.username(size=20) }}<br><br>
+        {{ login_form.password.label }}<br>
+        {{ login_form.password(size=20) }}<br><br>
+        {{ login_form.remember.label }} {{ login_form.remember }}<br><br>
+        <input type="submit" value="Log In">
+    </form>
+</body>
+</html>
