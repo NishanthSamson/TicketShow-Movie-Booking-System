@@ -17,7 +17,8 @@ var app = new Vue({
         selectedMovie: null,
         selectedDate: null,
         numTickets: 0,
-        showAvailableShows: false
+        showAvailableShows: false,
+        buttonStatus: 'btn btn-light  ',
       };
     },
     created() {

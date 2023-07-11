@@ -181,6 +181,7 @@ def account():
 
 
 @app.route('/booking', methods=['GET','POST'])
+@login_required
 def booking():
     return render_template('booking.html')
 
