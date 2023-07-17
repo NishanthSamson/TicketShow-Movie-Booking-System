@@ -1,10 +1,15 @@
-from flask import Flask, render_template, request, url_for, redirect, session, jsonify, abort
+from flask import Flask, render_template, request, url_for, redirect, jsonify, abort #session
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user
 from flask_security.utils import hash_password
 from werkzeug.utils import secure_filename
 from flask_bcrypt import *
 from datetime import datetime
+from flask import Flask
+from celery import Celery
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import os
 
 
@@ -13,6 +18,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SECRET_KEY'] = 'MAD2PROJECT'
 app.config['UPLOAD_FOLDER'] = 'static\\uploads'
 app.config['SECURITY_PASSWORD_SALT'] = 'SALT'
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery.conf.update(app.config)
 db = SQLAlchemy(app)
   
 class RolesUsers(db.Model):
@@ -83,7 +91,6 @@ user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
 
 
-
 with app.app_context():
     db.create_all()
     a = user_datastore.find_user(email='admin@gmail.com')
@@ -100,6 +107,40 @@ with app.app_context():
         db.session.add(new_theatre)
         db.session.commit()
 
+
+@celery.task
+def send_daily_reminder():
+    with app.app_context():
+        users = User.query.all()
+        for user in users:
+            if(user.email!='admin@gmail.com'):
+                email_address = user.email
+                email_subject = 'Daily Reminder'
+                email_body = 'This is a reminder to complete your tasks today!'
+                send_email(email_address, email_subject, email_body)
+            
+
+def send_email(to_address, subject, body):
+    from_address = 'ticketshowv2@gmail.com'
+    password = 'jjnsqsvuufljlfxs'
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+
+    message = MIMEMultipart()
+    message['From'] = from_address
+    message['To'] = to_address
+    message['Subject'] = subject
+
+    message.attach(MIMEText(body, 'plain'))
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as smtp:
+            smtp.starttls()
+            smtp.login(from_address, password)
+            smtp.send_message(message)
+            print('Reminder email sent successfully.')
+    except Exception as e:
+        print('Failed to send reminder email:', str(e))
 
 
 @app.route('/')
@@ -343,6 +384,11 @@ def my_bookings():
         }
         booking_list.append(bk_data)
     return jsonify(booking_list)
+
+@app.route('/send_reminder')
+def send_reminder():
+    send_daily_reminder.delay()
+    return 'Reminder task remain'
 
 def serialize_shows(shows):
     serialized_shows = []
