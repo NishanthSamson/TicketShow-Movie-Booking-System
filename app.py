@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, url_for, redirect, jsonify, abort #session
 from flask_sqlalchemy import SQLAlchemy
-from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user
+from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user, LoginForm, login_user
 from flask_security.utils import hash_password
 from werkzeug.utils import secure_filename
 from flask_bcrypt import *
@@ -43,13 +43,11 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(255), unique=True)
     username = db.Column(db.String(255), unique=True, nullable=True)
     password = db.Column(db.String(255), nullable=False)
-    last_login_at = db.Column(db.DateTime())
-    current_login_at = db.Column(db.DateTime())
-    last_login_ip = db.Column(db.String(100))
-    current_login_ip = db.Column(db.String(100))
-    login_count = db.Column(db.Integer)
+    img = db.Column(db.String(300))
+    phone = db.Column(db.Integer())
+    gender = db.Column(db.String(10))
+    address = db.Column(db.String(300))
     active = db.Column(db.Boolean())
-    premium = db.Column(db.Boolean())
     fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship(
@@ -94,14 +92,14 @@ security = Security(app, user_datastore)
 with app.app_context():
     db.create_all()
     a = user_datastore.find_user(email='admin@gmail.com')
-    b = Movies.query.get(1)
+    # b = Movies.query.get(1)
     c = Theatres.query.get(1)
     if not a:
         user_datastore.create_user(email='admin@gmail.com', password=hash_password('123'))
-    if(b == None):
-        new_movie = Movies(name='oppenheimer')
-        db.session.add(new_movie)
-        db.session.commit()
+    # if(b == None):
+    #     new_movie = Movies(name='oppenheimer')
+    #     db.session.add(new_movie)
+    #     db.session.commit()
     if(c == None):
         new_theatre = Theatres(name='INOX')
         db.session.add(new_theatre)
@@ -143,9 +141,14 @@ def send_email(to_address, subject, body):
         print('Failed to send reminder email:', str(e))
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    return render_template('login.html')
+    
 @app.route('/logout')
 def logout():
     logout_user()
@@ -171,10 +174,10 @@ def register():
     return render_template('register.html')
 
 
-@app.route('/account')
+@app.route('/account', methods=['GET','POST'])
 @login_required
 def account():
-    return render_template('account.html', uname=current_user.email)
+    return render_template('account.html', uname=current_user.username, uemail=current_user.email, uimg=current_user.img, uphone=current_user.phone, ugender=current_user.gender, uaddress=current_user.address)
 
 # @app.route('/profile')
 # @login_required
@@ -187,23 +190,16 @@ def account():
 def booking():
     return render_template('booking.html')
 
+@app.route('/accprofilepic', methods=['GET','POST'])
+def accprofilepic():
+    return render_template('profilepic.html')
+
 
 @app.route('/mybookings', methods = ['GET'])
 @login_required
 def mybookings():
     return render_template('mybookings.html')
 
-@app.route('/api/movies', methods=['GET'])
-def get_movies():
-    movies = Movies.query.all()
-    movie_list = []
-    for movie in movies:
-        movie_data = {
-            'id': movie.id,
-            'name': movie.name,
-        }
-        movie_list.append(movie_data)
-    return jsonify(movie_list)
 
 @app.route('/api/theaters', methods=['GET'])
 def get_theatres():
@@ -252,6 +248,50 @@ def book_tickets():
 
     response = {
         'message': 'Tickets booked successfully!'
+    }
+
+    return jsonify(response)
+
+@app.route('/api/update_profile', methods=['POST'])
+def update_profile():
+    data = request.json
+
+    uname = data.get('uName')
+    uphone = data.get('uPhone') 
+    ugender = data.get('uGender')
+    uaddress = data.get('uAddress')
+
+    user_id = current_user.id
+    user = User.query.filter_by(id = user_id).first()
+
+    user.username = uname
+    user.phone=uphone
+    user.gender=ugender
+    user.address = uaddress
+
+    db.session.commit()
+
+    response = {
+        'message': 'Details Updated successfully!'
+    }
+
+    return jsonify(response)
+
+@app.route('/api/profilepic/', methods=('GET', 'POST'))
+@login_required
+def profilepic():
+    user_id = current_user.id
+    user = User.query.filter_by(id=user_id).first()
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+    user.img=filename
+    db.session.commit()
+
+    response = {
+        'message': 'Profile Picture Updated successfully!'
     }
 
     return jsonify(response)

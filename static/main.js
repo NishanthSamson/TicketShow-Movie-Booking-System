@@ -18,16 +18,36 @@ var app = new Vue({
         selectedDate: null,
         numTickets: 0,
         showAvailableShows: false,
-        buttonStatus: 'btn btn-light  ',
+        buttonStatus: 'btn btn-light',
+        loggedIn: false,
+        loginDisp: false,
+        theme: 'dark',
+        loading: true,
+        uname: '',
+        uphone: '',
+        ugender: '',
+        uaddress: '',
+        profilepic: null
       };
     },
     created() {
-      this.fetchMovies();
-      this.fetchTheatres();
-      this.fetchShows()
-      this.fetchBookings();
+      this.fetchData();
     },
     methods: {
+      fetchData() {
+        Promise.all([
+          this.fetchMovies(),
+          this.fetchTheatres(),
+          this.fetchShows(),
+          this.fetchBookings(),
+        ])
+          .then(() => {
+            this.loading = false;
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
       fetchMovies() {
         axios.get('/api/movies')
           .then(response => {
@@ -119,6 +139,9 @@ var app = new Vue({
       handleFileChange(event) {
         this.selectedFile = event.target.files[0];
       },
+      handleProfileChange(event) {
+        this.profilepic = event.target.files[0];
+      },
       avshows() {
         axios.post('/api/allshows', {
           movieId: this.selectedMovie,
@@ -155,6 +178,32 @@ var app = new Vue({
           .catch(error => {
             console.error(error);
           });
-      }
+      },
+      updateProfile() {
+        axios.post('/api/update_profile', {
+          uName: this.uname,
+          uPhone: this.uphone,
+          uGender: this.ugender,
+          uAddress: this.uaddress
+        })
+          .then(response => {
+            console.log(response.data);
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
+      profilePic() {
+        const formData = new FormData();
+        formData.append('file', this.profilepic);
+
+        axios.post('/api/profilepic', formData)
+          .then(response => {
+            console.log(response.data);
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
     }
   });
