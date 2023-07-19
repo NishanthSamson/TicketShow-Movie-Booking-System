@@ -200,6 +200,19 @@ def accprofilepic():
 def mybookings():
     return render_template('mybookings.html')
 
+@app.route('/api/movies', methods=['GET'])
+def get_movies():
+    movies = Movies.query.all()
+    movie_list = []
+    for movie in movies:
+        movie_data = {
+            'id': movie.id,
+            'name': movie.name,
+            'img' : movie.img
+        }
+        movie_list.append(movie_data)
+    return jsonify(movie_list)
+
 
 @app.route('/api/theaters', methods=['GET'])
 def get_theatres():

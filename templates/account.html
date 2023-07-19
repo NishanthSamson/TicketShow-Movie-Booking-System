@@ -1,5 +1,5 @@
-<html data-bs-theme = "dark">
 <div id='app'>
+<html data-bs-theme = "dark">
   <nav class="navbar navbar-expand-lg bg-body-tertiary fixed-top p-3">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('index') }}">TicketShow</a>
@@ -27,7 +27,7 @@
         </form>
         </div>
         <div class = "d-flex me-5">
-        <button :class="buttonStatus" type="submit">Search</button>
+        <button id ="btnSwitch" :class="'btn btn-'+ theme" @click="toggleTheme">{theme}</button>
         </div>
         <a href="{{ url_for('login') }}" class = "btn btn-success ms-auto">Login</a>
       </div>
@@ -47,7 +47,7 @@
               <div class="card mb-4">
                 <div class="card-body text-center">
                   <a href="{{url_for('accprofilepic')}}">
-                  <img src="static/uploads/{{uimg}}" alt="avatar"
+                  <img class="rounded-circle shadow-4-strong" src="static/uploads/{{uimg}}" alt="avatar"
                     class="rounded-circle img-fluid" style="width: 150px;">
                   </a>
                   <h5 class="my-3">{{uname}}</h5>
@@ -157,5 +157,5 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
 <script src="../static/main.js"></script>
 </div>
-</div>
 </html>
+</div>

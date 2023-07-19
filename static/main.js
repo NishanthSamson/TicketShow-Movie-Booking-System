@@ -21,17 +21,18 @@ var app = new Vue({
         buttonStatus: 'btn btn-light',
         loggedIn: false,
         loginDisp: false,
-        theme: 'dark',
         loading: true,
         uname: '',
         uphone: '',
         ugender: '',
         uaddress: '',
-        profilepic: null
+        profilepic: null,
+        theme: 'dark'
       };
     },
     created() {
       this.fetchData();
+      // this.fetchTheme();
     },
     methods: {
       fetchData() {
@@ -75,6 +76,9 @@ var app = new Vue({
             console.error(error);
           });
       },
+      // fetchTheme() {
+      //   document.documentElement.setAttribute('data-bs-theme', this.theme);
+      // },
       addTheatre() {
         axios.post('/api/add_theatre', {
           theatreName: this.newTheatreName
@@ -204,6 +208,15 @@ var app = new Vue({
           .catch(error => {
             console.error(error);
           });
+      },
+      toggleTheme() {
+        if (this.theme === 'dark') {
+          this.theme = 'light';
+          document.documentElement.setAttribute('data-bs-theme', 'light');
+        } else {
+          this.theme = 'dark';
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
+        }
       },
     }
   });
