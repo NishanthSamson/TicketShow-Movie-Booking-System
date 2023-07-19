@@ -218,5 +218,11 @@ var app = new Vue({
           document.documentElement.setAttribute('data-bs-theme', 'dark');
         }
       },
+        getMovieURL(movieId) {
+          return `/movie/${movieId}/view/`;
+        },
+        bookMovie(movieId) {
+          this.selectedMovie = movieId;
+        },
     }
   });

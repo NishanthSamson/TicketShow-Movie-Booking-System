@@ -1,35 +1,83 @@
-<div id="app">
-<template>
-    <div>
-      <label for="movie">Select Movie:</label>
-      <select id="movie" v-model="selectedMovie">
-        <option v-for="movie in movies" :key="movie.id" :value="movie.id">{ movie.name }</option>
-      </select>
-
-      <label for="date">Select Date:</label>
-      <input type="date" id = "date" v-model.date="selectedDate" />
-  
-      <label for="tickets">Number of Tickets:</label>
-      <input type="number" id="tickets" v-model.number="numTickets" />
-  
-      <button @click="avshows()">Check for available shows</button>
-    </div>
-
-    <div v-show="showAvailableShows">
-      <div v-for="theatre in theatres":key="theatre.id">
-        <h2>Shows for { theatre.name }</h2>
-        <ul>
-          <li v-for="show in shows" :key="show.id" v-if="show.theatreId === theatre.id">
-            { show.starttime }
-            <form @submit.prevent="bookTickets(show.id, theatre.id)">
-              <input type="submit" value="Book">
-            </form>
+<html data-bs-theme = "dark">
+  <div id='app'>
+  <nav class="navbar navbar-expand-lg bg-body-tertiary fixed-top p-3">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{{ url_for('index') }}">TicketShow</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-4 mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{{ url_for('index') }}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('booking') }}">Book</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Movies</a>
+          </li>
+          <li class="nav-item me-5">
+            <a class="nav-link" href="{{ url_for('account') }}">Account</a>
           </li>
         </ul>
+        <form class="d-flex mb-1 w-50 mx-5" role="search">
+          <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        </div>
+        <div class = "d-flex me-5">
+        <button id ="btnSwitch" :class="'btn btn-'+ theme" @click="toggleTheme">{theme}</button>
+        </div>
+        <a href="{{ url_for('login') }}" class = "btn btn-success ms-auto">Login</a>
       </div>
-    </div>
-  </template>
-</div>
+  </nav>
+  <div class="container mt-2 mb-5">navbar content displays here</div>
+
+  <div id="app">
+    <template>
+      <div class="container py-5">
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label for="movie" class="form-label">Select Movie:</label>
+            <select id="movie" class="form-select" v-model="selectedMovie">
+              <option v-for="movie in movies" :key="movie.id" :value="movie.id">{ movie.name }</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="date" class="form-label">Select Date:</label>
+            <input type="date" id="date" class="form-control" v-model.date="selectedDate" />
+          </div>
+          <div class="col-md-3">
+            <label for="tickets" class="form-label">Number of Tickets:</label>
+            <input type="number" id="tickets" class="form-control" v-model.number="numTickets" />
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary" @click="avshows()">Check for available shows</button>
+          </div>
+        </div>
+
+        <div v-show="showAvailableShows">
+          <div v-for="theatre in theatres" :key="theatre.id" class="mb-4">
+            <h2>Shows for { theatre.name }</h2>
+            <ul class="list-group">
+              <li v-for="show in shows" :key="show.id" v-if="show.theatreId === theatre.id" class="list-group-item">
+                { show.starttime }
+                <form @submit.prevent="bookTickets(show.id, theatre.id)" class="d-inline">
+                  <button type="submit" class="btn btn-success">Book</button>
+                </form>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Vue.js script -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="../static/main.js"></script>  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <script src="../static/main.js"></script>
+  </html>

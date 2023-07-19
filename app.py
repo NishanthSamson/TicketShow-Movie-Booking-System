@@ -184,6 +184,12 @@ def account():
 # def profile():
 #     return render_template('profile.html')
 
+@app.route('/movie/<int:movie_id>/view/', methods=('GET', 'POST'))
+@login_required
+def view_movie(movie_id):
+    movie = Movies.query.get_or_404(movie_id)
+    return render_template('movies.html', movie=movie)
+
 
 @app.route('/booking', methods=['GET','POST'])
 @login_required
