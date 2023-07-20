@@ -15,7 +15,7 @@
             <a class="nav-link" href="{{ url_for('booking') }}">Book</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('logout') }}">Movies</a>
+            <a class="nav-link" href="{{ url_for('movies') }}">Movies</a>
           </li>
           <li class="nav-item me-5">
             <a class="nav-link active">Account</a>
@@ -44,7 +44,7 @@
       
           <div class="row mt-3">
             <div class="col-lg-4">
-              <div class="card mb-4">
+              <div class="card mb-2">
                 <div class="card-body text-center">
                   <a href="{{url_for('accprofilepic')}}">
                   <img class="rounded-circle shadow-4-strong" src="static/uploads/{{uimg}}" alt="avatar"
@@ -62,26 +62,15 @@
               <div class="card mb-4 mb-lg-0">
                 <div class="card-body p-0">
                   <ul class="list-group list-group-flush rounded-3">
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                    <li class="list-group-item p-3">
                       <i class="fas fa-globe fa-lg text-warning"></i>
-                      <p class="mb-0">https://mdbootstrap.com</p>
+                      <p class="mb-0">{{uname}}</p>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                    <li class="list-group-item p-3">
                       <i class="fab fa-github fa-lg" style="color: #333333;"></i>
-                      <p class="mb-0">mdbootstrap</p>
+                      <p class="mb-0">{{ugender}}</p>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
-                      <i class="fab fa-twitter fa-lg" style="color: #55acee;"></i>
-                      <p class="mb-0">@mdbootstrap</p>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
-                      <i class="fab fa-instagram fa-lg" style="color: #ac2bac;"></i>
-                      <p class="mb-0">mdbootstrap</p>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
-                      <i class="fab fa-facebook-f fa-lg" style="color: #3b5998;"></i>
-                      <p class="mb-0">mdbootstrap</p>
-                    </li>
+
                   </ul>
                 </div>
               </div>

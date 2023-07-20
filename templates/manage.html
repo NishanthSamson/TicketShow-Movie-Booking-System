@@ -1,0 +1,36 @@
+<div id = 'app'>
+<div class="container">
+<div v-for="theatre in theatres" :key="theatre.id">
+    <div v-if="theatre.id==={{theatre_id}}">
+    <h2 class="mt-5">Shows for { theatre.name }</h2>
+    <div class="col-md-6">
+    <ul class="list-group mb-3">
+      <li v-for="show in theatre.shows" :key="show.id" class="list-group-item d-flex justify-content-between align-items-center">
+        <b>Movie:</b> { show.movie.name } <b>Showtime:</b> {show.starttime }
+        <button class="btn btn-danger" @click="removeShow(show.id)">Remove</button>
+      </li>
+    </ul>
+  </div>
+
+    <h3 class="mt-5">Add Show</h3>
+    <form method="POST" @submit.prevent="addShow(theatre.id)">
+      <div class="col-md-6">
+      <div class="input-group">
+        <select v-model="newShowMovieId" required class="form-select">
+          <option v-for="movie in movies" :value="movie.id">{ movie.name }</option>
+        </select>
+        <input type="datetime-local" v-model="newShowStartTime" required class="form-control">
+        <input type="number" v-model="newShowTickets" required class="form-control" placeholder="Number of seats">
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+    </div>
+    </form>
+</div>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+<script src="{{ url_for('static', filename='main.js') }}"></script>

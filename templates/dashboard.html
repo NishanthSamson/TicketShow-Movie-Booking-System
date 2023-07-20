@@ -1,84 +1,79 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Admin Dashboard</title>
-</head>
+<html data-bs-theme = "dark">
+  <div id="app"> 
+  <nav class="navbar navbar-expand-lg bg-body-tertiary fixed-top p-3">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{{ url_for('index') }}">TicketShow</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-4 mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{{ url_for('index') }}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('booking') }}">Book</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('movies') }}">Movies</a>
+          </li>
+          <li class="nav-item me-5">
+            <a class="nav-link" href="{{ url_for('account') }}">Account</a>
+          </li>
+        </ul>
+        <form class="d-flex mb-1 w-50 mx-5" role="search">
+          <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        </div>
+        <div class = "d-flex me-5">
+        <button id ="btnSwitch" :class="'btn btn-'+ theme" @click="toggleTheme">{theme}</button>
+        </div>
+      </div>
+  </nav>
+  <div class="container mt-2 mb-5">navbar content displays here</div>
+  
 <body>
-  <div id="app">
-    <div class="container">
-      <h2>Theatres</h2>
-      <div class="row my-3">
-      <div class="col-md-3" v-for="theatre in theatres">
+  <div class="container py-4">
+    <h2 class="mb-4">Theatres</h2>
+    <div class="row my-3">
+      <div class="col-md-3" v-for="theatre in theatres" :key="theatre.id">
         <div class="card my-3">
-          <div class="card-img-top"><img src="https://picsum.photos/300/200" alt="" srcset=""></div>
-            <div class="card-title">{ theatre.name }
-              <div class = "d-flex justify-content-between">
-                <button class = "btn btn-success">Add Shows</button>
-            <form method="POST" :action="removeTheatre(theatre.id)">
-              <input type="submit" value="Remove" class = "btn btn-danger">
-            </form>
-            
-              </div>
+          <div class="card-body">
+            <h5 class="card-title">{ theatre.name }</h5>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-success" @click="manageShows(theatre.id)">Manage</button>
+              <button class="btn btn-danger" @click="removeTheatre(theatre.id)">Remove</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
-
-    <!-- <ul> -->
-      <!-- <li v-for="theatre in theatres">
-        { theatre.name }
-        <form method="POST" :action="removeTheatre(theatre.id)">
-          <input type="submit" value="Remove">
-        </form>
-      </li>
-    </ul> -->
-
-    <h2>Add Theatre</h2>
+    <div class="col-md-6">
+    <h2 class="mt-5">Add Theatre</h2>
     <form method="POST" @submit.prevent="addTheatre">
-      <input type="text" v-model="newTheatreName" placeholder="Theatre Name" required>
-      <input type="submit" value="Add">
+      <div class="input-group mb-3">
+        <input type="text" class="form-control" v-model="newTheatreName" placeholder="Theatre Name" required>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
     </form>
 
-    <h2>Add Movie</h2>
+    <h2 class="mt-5">Add Movie</h2>
     <form method="POST" @submit.prevent="addMovie">
-      <input type="text" v-model="newMovieName" placeholder="Movie Name" required>
-      <input type="text" v-model="newMovieDesc" placeholder="Movie Description" required>
-      <input type="file" ref="fileInput" @change="handleFileChange">
-      <input type="submit" value="Add">
+      <div class="input-group mb-3">
+        <input type="text" class="form-control" v-model="newMovieName" placeholder="Movie Name" required>
+        <input type="text" class="form-control" v-model="newMovieDesc" placeholder="Movie Description" required>
+        <input type="file" ref="fileInput" @change="handleFileChange" class="form-control" placeholder="Movie Poster">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
     </form>
-
-    <div v-for="theatre in theatres">
-      <h2>Shows for { theatre.name }</h2>
-      <ul>
-        <li v-for="show in theatre.shows">
-          { show.movie.name } - { show.starttime }
-          <form method="POST" :action="removeShow(show.id)">
-            <input type="submit" value="Delete">
-          </form>
-        </li>
-      </ul>
-
-      <h3>Add Show</h3>
-      <form method="POST" @submit.prevent="addShow(theatre.id)">
-        <select v-model="newShowMovieId" required>
-          <option v-for="movie in movies" :value="movie.id">{ movie.name }</option>
-        </select>
-        <input type="datetime-local" v-model="newShowStartTime" required>
-        <input type="number" v-model="newShowTickets" required>
-        <input type="submit" value="Add">
-      </form>
-    </div>
-    <h1>{buttonStatus}</h1>
-    <template v-if="loading">
-      <!-- Show loading indicator -->
-      <p>Loading...</p>
-    </template>
   </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <script src="../static/main.js"></script>
-
 </body>
 </html>

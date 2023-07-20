@@ -27,7 +27,8 @@ var app = new Vue({
         ugender: '',
         uaddress: '',
         profilepic: null,
-        theme: 'dark'
+        theme: 'dark',
+        manageTheatre: '',
       };
     },
     created() {
@@ -91,7 +92,7 @@ var app = new Vue({
           });
       },
       removeTheatre(TheatreId) {
-        axios.post('/api/remove_theatre/', {
+        axios.post('/api/remove_theatre', {
           theatreId: TheatreId
         })
           .then(response => {
@@ -130,7 +131,7 @@ var app = new Vue({
           });
       },
       removeShow(ShowId) {
-        axios.post('/api/remove_show/', {
+        axios.post('/api/remove_show', {
           showId: ShowId
         })
           .then(response => {
@@ -223,6 +224,12 @@ var app = new Vue({
         },
         bookMovie(movieId) {
           this.selectedMovie = movieId;
+        },
+        manageShows(theatreId) {
+          this.manageTheatre = theatreId;
+          const url = `/admin/manage/${theatreId}`; // Construct the correct URL with theatreId
+          // Redirect the user to the URL
+          window.location.href = url;
         },
     }
   });

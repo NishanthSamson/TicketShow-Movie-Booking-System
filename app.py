@@ -147,6 +147,8 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated and current_user.email == 'admin@gmail.com':
+        return redirect(url_for('admin'))
     return render_template('login.html')
     
 @app.route('/logout')
@@ -159,6 +161,12 @@ def admin():
     if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
         return abort(403)
     return render_template('dashboard.html',uname=uname)
+
+@app.route('/admin/manage/<int:theatre_id>', methods=['GET', 'POST'])
+def manage(theatre_id):
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
+    return render_template('manage.html', theatre_id = theatre_id)
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
@@ -190,6 +198,9 @@ def view_movie(movie_id):
     movie = Movies.query.get_or_404(movie_id)
     return render_template('movies.html', movie=movie)
 
+@app.route('/movies', methods=('GET', 'POST'))
+def movies():
+    return render_template('allmovies.html')
 
 @app.route('/booking', methods=['GET','POST'])
 @login_required
@@ -233,19 +244,19 @@ def get_theatres():
         theatre_list.append(theatre_data)
     return jsonify(theatre_list)
 
-@app.route('/api/shows', methods=['GET'])
-def get_shows():
-    shows = Shows.query.all()
-    shows_list = []
-    for show in shows:
-        show_data = {
-            'id': show.id,
-            'movie': show.movie,
-            'starttime': show.starttime,
-            'tickets': show.tickets,
-        }
-        shows_list.append(show_data)
-    return jsonify(shows_list)
+# @app.route('/api/shows', methods=['GET'])
+# def get_shows():
+#     shows = Shows.query.all()
+#     shows_list = []
+#     for show in shows:
+#         show_data = {
+#             'id': show.id,
+#             'movie': show.movie,
+#             'starttime': show.starttime,
+#             'tickets': show.tickets,
+#         }
+#         shows_list.append(show_data)
+#     return jsonify(shows_list)
 
 @app.route('/api/book_tickets', methods=['POST'])
 def book_tickets():
@@ -326,7 +337,7 @@ def all_shows():
     shows = Shows.query.filter_by(movie_id=movie_id, date=date).all()
     shows_list = []
     for show in shows:
-        if(show.tickets>=num_tickets):    
+        if(show.tickets>=num_tickets and num_tickets>0):    
             show_data = {
                 'id': show.id,
                 'starttime': show.starttime,
@@ -353,21 +364,48 @@ def add_theatre():
 
     return jsonify(response)
 
-@app.route('/api/remove_theatre', methods=['POST'])
+@app.route('/api/remove_theatre', methods=['GET','POST'])
 def remove_theatre():
     data = request.json
-
     theatre_id = data.get('theatreId')
+    # Retrieve the theatre from the database
+    theatre = Theatres.query.get_or_404(theatre_id)
 
-    theatre = Theatres.query.filter_by(id=theatre_id).first()
+    # Delete associated shows for the theatre
+    shows = Shows.query.filter_by(theatre_id=theatre_id).all()
+    for show in shows:
+        # Delete associated bookings for each show
+        bookings = Bookings.query.filter_by(show_id=show.id).all()
+        for booking in bookings:
+            db.session.delete(booking)
+
+        db.session.delete(show)
+
+    # Delete the theatre itself
     db.session.delete(theatre)
+
+    # Commit the changes to the database
     db.session.commit()
 
-    response = {
-        'message': 'Theatre removed successfully!'
-    }
+    return jsonify({"message": f"Theatre with ID {theatre_id} and its associated shows and bookings have been removed successfully."})
 
-    return jsonify(response)
+
+
+# @app.route('/api/remove_theatre', methods=['POST'])
+# def remove_theatre():
+#     data = request.json
+
+#     theatre_id = data.get('theatreId')
+
+#     theatre = Theatres.query.filter_by(id=theatre_id).first()
+#     db.session.delete(theatre)
+#     db.session.commit()
+
+#     response = {
+#         'message': 'Theatre removed successfully!'
+#     }
+
+#     return jsonify(response)
 
 @app.route('/api/add_movie', methods=['POST'])
 def add_movie():
@@ -415,18 +453,23 @@ def add_show():
 @app.route('/api/remove_show', methods=['POST'])
 def remove_show():
     data = request.json
-
     show_id = data.get('showId')
+    # Retrieve the show from the database
+    show = Shows.query.get_or_404(show_id)
 
-    show = Shows.query.filter_by(id=show_id).first()
+    # Delete associated bookings for the show
+    bookings = Bookings.query.filter_by(show_id=show_id).all()
+    for booking in bookings:
+        db.session.delete(booking)
+
+    # Delete the show itself
     db.session.delete(show)
+
+    # Commit the changes to the database
     db.session.commit()
 
-    response = {
-        'message': 'Show removed successfully!'
-    }
+    return jsonify({"message": f"Show with ID {show_id} and its associated bookings have been removed successfully."})
 
-    return jsonify(response)
 
 @app.route('/api/my_bookings', methods = ['GET'])
 def my_bookings():
