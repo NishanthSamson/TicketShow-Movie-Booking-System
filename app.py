@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, abort #session
+from flask import Flask, render_template, request, url_for, redirect, jsonify, abort, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user, LoginForm, login_user
 from flask_security.utils import hash_password
@@ -58,6 +58,8 @@ class Movies(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     img = db.Column(db.String(300))
+    genre = db.Column(db.String(50))
+    rating = db.Column(db.Float)
     desc = db.Column(db.String(1000))
 
 class Theatres(db.Model):
@@ -70,6 +72,7 @@ class Bookings(db.Model):
     theatre_id = db.Column(db.Integer, db.ForeignKey('theatres.id'))
     theatre = db.relationship('Theatres', backref=db.backref('bookings'))
     nos = db.Column(db.Integer)
+    cost = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     user = db.relationship('User', backref=db.backref('bookings'))
     show_id = db.Column(db.Integer, db.ForeignKey('shows.id'))
@@ -80,6 +83,7 @@ class Shows(db.Model):
     tickets = db.Column(db.Integer, default=100)
     date = db.Column(db.Date())
     starttime = db.Column(db.DateTime())
+    price = db.Column(db.Integer, default=100)
     movie_id = db.Column(db.Integer, db.ForeignKey('movies.id'))
     movie = db.relationship('Movies', backref=db.backref('shows'))
     theatre_id = db.Column(db.Integer, db.ForeignKey('theatres.id'))
@@ -116,7 +120,25 @@ def send_daily_reminder():
                 email_subject = 'Daily Reminder'
                 email_body = 'This is a reminder to complete your tasks today!'
                 send_email(email_address, email_subject, email_body)
-            
+
+@celery.task
+def send_monthly_newsletter():
+    with app.app_context():
+        users = User.query.all()
+        for user in users:
+            if(user.email!='admin@gmail.com'):
+                email_address = user.email
+                email_subject = 'Monthly Newsletter'
+                email_body = generate_newsletter()
+                send_news(email_address, email_subject, email_body)           
+
+def generate_newsletter():
+    with open('templates/newsletter.html', 'r') as file:
+        template_content = file.read()
+    movies = Movies.query.order_by(Movies.id.desc()).limit(5).all()
+    rendered_template = render_template_string(template_content, movies=movies)
+
+    return rendered_template
 
 def send_email(to_address, subject, body):
     from_address = 'ticketshowv2@gmail.com'
@@ -140,9 +162,33 @@ def send_email(to_address, subject, body):
     except Exception as e:
         print('Failed to send reminder email:', str(e))
 
+def send_news(to_address, subject, body):
+    from_address = 'ticketshowv2@gmail.com'
+    password = 'jjnsqsvuufljlfxs'
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+
+    message = MIMEMultipart()
+    message['From'] = from_address
+    message['To'] = to_address
+    message['Subject'] = subject
+
+    message.attach(MIMEText(body, 'html'))
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as smtp:
+            smtp.starttls()
+            smtp.login(from_address, password)
+            smtp.send_message(message)
+            print('Reminder email sent successfully.')
+    except Exception as e:
+        print('Failed to send reminder email:', str(e))
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    if current_user.is_authenticated and current_user.email == 'admin@gmail.com':
+        return redirect(url_for('manage_theatres'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -155,12 +201,18 @@ def login():
 def logout():
     logout_user()
 
-@app.route('/admin/dashboard', methods=['GET', 'POST'])
-def admin():
+@app.route('/admin/manage/theatres', methods=['GET', 'POST'])
+def manage_theatres():
     uname=current_user.email
     if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
         return abort(403)
-    return render_template('dashboard.html',uname=uname)
+    return render_template('managetheatres.html',uname=uname)
+
+@app.route('/admin/manage/movies', methods=['GET', 'POST'])
+def manage_movies():
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
+    return render_template('managemovies.html')
 
 @app.route('/admin/manage/<int:theatre_id>', methods=['GET', 'POST'])
 def manage(theatre_id):
@@ -216,6 +268,41 @@ def accprofilepic():
 @login_required
 def mybookings():
     return render_template('mybookings.html')
+
+@app.route('/search/results', methods=['GET'])
+def search_results():
+    # Retrieve the query string from the URL parameters
+    query_string = request.args.get('query', '')
+    
+    # Query the database based on the query string
+    movies = Movies.query.filter(Movies.name.ilike(f"%{query_string}%")).all()
+    
+    # Pass the search results data to the 'results.html' template
+    return render_template('results.html', movies=movies)
+
+@app.route('/edit_theatre/<int:theatre_id>', methods=['GET','POST'])
+def edit_theatre(theatre_id):
+    theatre = Theatres.query.get_or_404(theatre_id)
+    return render_template('edittheatre.html', theatre=theatre)
+
+@app.route('/edit_movie/<int:movie_id>', methods=['GET','POST'])
+def edit_movie(movie_id):
+    movie = Movies.query.get_or_404(movie_id)
+    return render_template('editmovies.html', movie=movie)
+
+
+
+# @app.route('/api/search_movies', methods=['POST'])
+# def search_movies():
+#     data = request.json
+#     query = data.get('query')
+
+#     movies = Movies.query.filter(Movies.name.ilike(f"%{query}%")).all()
+
+#     movies_data = [{'id': movie.id, 'name': movie.name, 'img': movie.img} for movie in movies]
+
+#     return jsonify(movies_data)
+
 
 @app.route('/api/movies', methods=['GET'])
 def get_movies():
@@ -364,6 +451,25 @@ def add_theatre():
 
     return jsonify(response)
 
+@app.route('/api/edit_theatre', methods=['POST'])
+def e_theatre():
+    data = request.json
+
+    theatre_id = data.get('theatreId')
+    theatre_name = data.get('theatreName')
+
+
+    theatre = Theatres.query.get_or_404(theatre_id)
+    theatre.name = theatre_name
+
+    db.session.commit()
+
+    response = {
+        'message': 'Theatre edited successfully!'
+    }
+
+    return jsonify(response)
+
 @app.route('/api/remove_theatre', methods=['GET','POST'])
 def remove_theatre():
     data = request.json
@@ -424,6 +530,26 @@ def add_movie():
 
     response = {
         'message': 'Movie added successfully!'
+    }
+
+    return jsonify(response)
+
+@app.route('/api/edit_movie', methods=['POST'])
+def e_movie():
+    data = request.json
+
+    movie_id = data.get('movieId')
+    movie_name = data.get('movieName')
+    movie_desc = data.get('movieDesc')
+
+    movie = Movies.query.get_or_404(movie_id)
+    movie.name = movie_name
+    movie.desc = movie_desc
+
+    db.session.commit()
+
+    response = {
+        'message': 'Movie edited successfully!'
     }
 
     return jsonify(response)
@@ -490,7 +616,12 @@ def my_bookings():
 @app.route('/send_reminder')
 def send_reminder():
     send_daily_reminder.delay()
-    return 'Reminder task remain'
+    return 'Reminder task sent!'
+
+@app.route('/send_newsletter')
+def send_newsletter():
+    send_monthly_newsletter.delay()
+    return 'Newsletter sent!'
 
 def serialize_shows(shows):
     serialized_shows = []

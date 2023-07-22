@@ -29,6 +29,12 @@ var app = new Vue({
         profilepic: null,
         theme: 'dark',
         manageTheatre: '',
+        queryString: '', // Vue data to store the search query
+        searchResults: [],
+        showSearchResults: true,
+        theatreName: '',
+        movieName: '',
+        movieDesc: '', // Vue data to store the search results
       };
     },
     created() {
@@ -91,6 +97,18 @@ var app = new Vue({
             console.error(error);
           });
       },
+      editTheatre(TheatreId) {
+        axios.post('/api/edit_theatre', {
+          theatreId: TheatreId,
+          theatreName: this.theatreName,
+        })
+          .then(response => {
+            console.log(response.data);
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      },
       removeTheatre(TheatreId) {
         axios.post('/api/remove_theatre', {
           theatreId: TheatreId
@@ -109,6 +127,19 @@ var app = new Vue({
           formData.append('file', this.selectedFile);
 
           axios.post('/api/add_movie', formData)
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+            });
+        },
+        editMovie(MovieId) {
+          axios.post('/api/edit_movie', {
+            movieId: MovieId,
+            movieName: this.movieName,
+            movieDesc: this.movieDesc,
+          })
             .then(response => {
               console.log(response.data);
             })
@@ -230,6 +261,12 @@ var app = new Vue({
           const url = `/admin/manage/${theatreId}`; // Construct the correct URL with theatreId
           // Redirect the user to the URL
           window.location.href = url;
+        },
+        redirectToResults() {
+          if (this.queryString.trim() !== '') {
+            const url = `/search/results?query=${encodeURIComponent(this.queryString)}`;
+            window.location.href = url;
+          }
         },
     }
   });

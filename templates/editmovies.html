@@ -1,0 +1,10 @@
+<div id='app'>
+    <form method="post" @submit.prevent="editMovie({{movie.id}})">
+        <input type ="text" v-model="movieName" placeholder="Movie Name" required>
+        <input type="text" v-model="movieDesc" placeholder="Movie Description" required>
+        <button type="submit">Save</button>
+    </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../static/main.js"></script>
