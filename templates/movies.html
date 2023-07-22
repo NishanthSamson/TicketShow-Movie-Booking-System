@@ -49,7 +49,9 @@
       </div>
     <div class="col-lg-5 ms-5 p-5">
         <h1>{{movie.name}}</h1>
-        <p>{{movie.desc}}</p>
+        <h5 class="p-1">Rating: {{movie.rating}}</h4>
+        <h5 class="p-1">Number of bookings: {{movie.popularity}}</h4>
+        <p class="p-1">{{movie.desc}}</p>
         <form action="{{ url_for('booking') }}" method="post">
             <button type="submit" class="btn btn-outline-success" @click="bookMovie({{movie.id}})">Book Tickets</button>
           </form>

@@ -9,7 +9,7 @@
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-4 mb-2 mb-lg-0">
           <li class="nav-item">
-            <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">Dashboard</a>
+            <a class="nav-link" aria-current="page" href="{{ url_for('dashboard') }}">Dashboard</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('manage_theatres') }}">Theatres</a>
@@ -18,7 +18,7 @@
             <a class="nav-link active" href="{{ url_for('manage_movies') }}">Movies</a>
           </li>
           <li class="nav-item me-5">
-            <a class="nav-link" href="{{ url_for('account') }}">Account</a>
+            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
           </li>
         </ul>
         </div>
@@ -51,6 +51,8 @@
       <div class="input-group mb-3">
         <input type="text" class="form-control" v-model="newMovieName" placeholder="Movie Name" required>
         <input type="text" class="form-control" v-model="newMovieDesc" placeholder="Movie Description" required>
+        <input type="text" class="form-control" v-model="newMovieGenre" placeholder="Genre" required>
+        <input type="number" step="0.01" class="form-control" v-model="newMovieRating" placeholder="Rating" required> 
         <input type="file" ref="fileInput" @change="handleFileChange" class="form-control" placeholder="Movie Poster">
         <button class="btn btn-primary" type="submit">Add</button>
       </div>

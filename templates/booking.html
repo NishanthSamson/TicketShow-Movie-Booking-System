@@ -62,7 +62,7 @@
             <h2>Shows for { theatre.name }</h2>
             <ul class="list-group">
               <li v-for="show in shows" :key="show.id" v-if="show.theatreId === theatre.id" class="list-group-item">
-                { show.starttime }
+                { show.starttime }, Price: { show.price }
                 <form @submit.prevent="bookTickets(show.id, theatre.id)" class="d-inline">
                   <button type="submit" class="btn btn-success">Book</button>
                 </form>

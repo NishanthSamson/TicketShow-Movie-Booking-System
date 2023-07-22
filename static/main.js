@@ -12,8 +12,11 @@ var app = new Vue({
         newShowMovieId: '',
         newShowStartTime: '',
         newShowTickets: '',
+        newShowPrice: 0,
         selectedFile: null,
         newMovieDesc: '',
+        newMovieGenre: '',
+        newMovieRating: 0,
         selectedMovie: null,
         selectedDate: null,
         numTickets: 0,
@@ -29,24 +32,23 @@ var app = new Vue({
         profilepic: null,
         theme: 'dark',
         manageTheatre: '',
-        queryString: '', // Vue data to store the search query
+        queryString: '',
         searchResults: [],
         showSearchResults: true,
         theatreName: '',
         movieName: '',
-        movieDesc: '', // Vue data to store the search results
+        movieDesc: '',
       };
     },
     created() {
       this.fetchData();
-      // this.fetchTheme();
     },
     methods: {
       fetchData() {
         Promise.all([
           this.fetchMovies(),
           this.fetchTheatres(),
-          this.fetchShows(),
+          // this.fetchShows(),
           this.fetchBookings(),
         ])
           .then(() => {
@@ -74,17 +76,14 @@ var app = new Vue({
             console.error(error);
           });
       },
-      fetchShows() {
-        axios.get('/api/shows')
-          .then(response => {
-            this.shows = response.data;
-          })
-          .catch(error => {
-            console.error(error);
-          });
-      },
-      // fetchTheme() {
-      //   document.documentElement.setAttribute('data-bs-theme', this.theme);
+      // fetchShows() {
+      //   axios.get('/api/shows')
+      //     .then(response => {
+      //       this.shows = response.data;
+      //     })
+      //     .catch(error => {
+      //       console.error(error);
+      //     });
       // },
       addTheatre() {
         axios.post('/api/add_theatre', {
@@ -124,6 +123,8 @@ var app = new Vue({
           const formData = new FormData();
           formData.append('movieName', this.newMovieName);
           formData.append('movieDesc', this.newMovieDesc);
+          formData.append('movieGenre', this.newMovieGenre);
+          formData.append('movieRating', this.newMovieRating);
           formData.append('file', this.selectedFile);
 
           axios.post('/api/add_movie', formData)
@@ -152,6 +153,7 @@ var app = new Vue({
           showMovieId: this.newShowMovieId,
           startTime: this.newShowStartTime,
           tickets: this.newShowTickets,
+          price: this.newShowPrice,
           theatreId: TheatreId
         })
           .then(response => {
@@ -258,8 +260,7 @@ var app = new Vue({
         },
         manageShows(theatreId) {
           this.manageTheatre = theatreId;
-          const url = `/admin/manage/${theatreId}`; // Construct the correct URL with theatreId
-          // Redirect the user to the URL
+          const url = `/admin/manage/${theatreId}`;
           window.location.href = url;
         },
         redirectToResults() {

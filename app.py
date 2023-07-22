@@ -1,15 +1,20 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, abort, render_template_string
+from flask import Flask, render_template, request, url_for, redirect, jsonify, abort, render_template_string, Response
 from flask_sqlalchemy import SQLAlchemy
-from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user, LoginForm, login_user
+from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user
 from flask_security.utils import hash_password
 from werkzeug.utils import secure_filename
 from flask_bcrypt import *
 from datetime import datetime
 from flask import Flask
 from celery import Celery
+from celery.schedules import crontab
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import matplotlib.pyplot as plt
+from flask_caching import Cache
+import csv
+import pandas as pd
 import os
 
 
@@ -21,6 +26,7 @@ app.config['SECURITY_PASSWORD_SALT'] = 'SALT'
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
+cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 db = SQLAlchemy(app)
   
 class RolesUsers(db.Model):
@@ -43,7 +49,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(255), unique=True)
     username = db.Column(db.String(255), unique=True, nullable=True)
     password = db.Column(db.String(255), nullable=False)
-    img = db.Column(db.String(300))
+    img = db.Column(db.String(300),default = 'user.png')
     phone = db.Column(db.Integer())
     gender = db.Column(db.String(10))
     address = db.Column(db.String(300))
@@ -60,6 +66,7 @@ class Movies(db.Model):
     img = db.Column(db.String(300))
     genre = db.Column(db.String(50))
     rating = db.Column(db.Float)
+    popularity = db.Column(db.Integer, default=0)
     desc = db.Column(db.String(1000))
 
 class Theatres(db.Model):
@@ -96,18 +103,8 @@ security = Security(app, user_datastore)
 with app.app_context():
     db.create_all()
     a = user_datastore.find_user(email='admin@gmail.com')
-    # b = Movies.query.get(1)
-    c = Theatres.query.get(1)
     if not a:
         user_datastore.create_user(email='admin@gmail.com', password=hash_password('123'))
-    # if(b == None):
-    #     new_movie = Movies(name='oppenheimer')
-    #     db.session.add(new_movie)
-    #     db.session.commit()
-    if(c == None):
-        new_theatre = Theatres(name='INOX')
-        db.session.add(new_theatre)
-        db.session.commit()
 
 
 @celery.task
@@ -184,6 +181,16 @@ def send_news(to_address, subject, body):
     except Exception as e:
         print('Failed to send reminder email:', str(e))
 
+celery.conf.beat_schedule = {
+    'send-daily-reminder': {
+        'task': 'app.send_daily_reminder',
+        'schedule': crontab(hour=8, minute=0),
+    },
+    'send-monthly-newsletter': {
+        'task': 'app.send_monthly_newsletter',
+        'schedule': crontab(day_of_month='1', hour='0', minute='0'),
+    },
+}
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -201,12 +208,47 @@ def login():
 def logout():
     logout_user()
 
-@app.route('/admin/manage/theatres', methods=['GET', 'POST'])
-def manage_theatres():
-    uname=current_user.email
+@app.route('/admin/dashboard', methods=['GET', 'POST'])
+def dashboard():
     if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
         return abort(403)
-    return render_template('managetheatres.html',uname=uname)
+    movies = Movies.query.order_by(Movies.popularity.desc()).limit(10).all()
+    movielist = []
+    bookingslist = []
+    for movie in movies:
+        movielist.append(movie.name)
+        bookingslist.append(movie.popularity)
+    plt.figure(figsize=(10, 6))
+    plt.bar(movielist, bookingslist)
+    plt.xlabel('Movie Name')
+    plt.ylabel('Number of Bookings')
+    plt.title('Top 5 Movies by Number of Bookings')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig('static/histogram.png')
+
+
+    booking_counts = db.session.query(Bookings.theatre_id, db.func.count(Bookings.id)).group_by(Bookings.theatre_id).all()
+
+    theatre_ids, booking_counts = zip(*booking_counts)
+    theatre_names = [Theatres.query.get(theatre_id).name for theatre_id in theatre_ids]
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(booking_counts, labels=theatre_names, autopct='%1.1f%%', startangle=140)
+    plt.title('Number of Bookings in Each Theatre')
+    plt.axis('equal')
+
+    plt.savefig('static/pie_chart.png')
+
+    total_popularity = db.session.query(db.func.sum(Movies.popularity)).scalar()
+
+    return render_template('dashboard.html', total_popularity=total_popularity)
+
+@app.route('/admin/manage/theatres', methods=['GET', 'POST'])
+def manage_theatres():
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
+    return render_template('managetheatres.html')
 
 @app.route('/admin/manage/movies', methods=['GET', 'POST'])
 def manage_movies():
@@ -219,6 +261,25 @@ def manage(theatre_id):
     if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
         return abort(403)
     return render_template('manage.html', theatre_id = theatre_id)
+
+@app.route('/admin/download_data', methods=['GET'])
+def download_data():
+    mlist = []
+    poplist = []
+    for movie in Movies.query.all() :
+        mlist.append(movie.name)
+        poplist.append(movie.popularity)
+    data = {
+        'Movie': mlist,
+        'No of Bookings': poplist
+    }
+    df = pd.DataFrame(data)
+
+
+    csv_data = df.to_csv(index=False)
+    response = Response(csv_data, content_type='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=dashboard_data.csv'
+    return response
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
@@ -238,11 +299,6 @@ def register():
 @login_required
 def account():
     return render_template('account.html', uname=current_user.username, uemail=current_user.email, uimg=current_user.img, uphone=current_user.phone, ugender=current_user.gender, uaddress=current_user.address)
-
-# @app.route('/profile')
-# @login_required
-# def profile():
-#     return render_template('profile.html')
 
 @app.route('/movie/<int:movie_id>/view/', methods=('GET', 'POST'))
 @login_required
@@ -291,19 +347,6 @@ def edit_movie(movie_id):
     return render_template('editmovies.html', movie=movie)
 
 
-
-# @app.route('/api/search_movies', methods=['POST'])
-# def search_movies():
-#     data = request.json
-#     query = data.get('query')
-
-#     movies = Movies.query.filter(Movies.name.ilike(f"%{query}%")).all()
-
-#     movies_data = [{'id': movie.id, 'name': movie.name, 'img': movie.img} for movie in movies]
-
-#     return jsonify(movies_data)
-
-
 @app.route('/api/movies', methods=['GET'])
 def get_movies():
     movies = Movies.query.all()
@@ -319,6 +362,7 @@ def get_movies():
 
 
 @app.route('/api/theaters', methods=['GET'])
+@cache.cached(timeout=3600)
 def get_theatres():
     theatres = Theatres.query.all()
     theatre_list = []
@@ -331,20 +375,6 @@ def get_theatres():
         theatre_list.append(theatre_data)
     return jsonify(theatre_list)
 
-# @app.route('/api/shows', methods=['GET'])
-# def get_shows():
-#     shows = Shows.query.all()
-#     shows_list = []
-#     for show in shows:
-#         show_data = {
-#             'id': show.id,
-#             'movie': show.movie,
-#             'starttime': show.starttime,
-#             'tickets': show.tickets,
-#         }
-#         shows_list.append(show_data)
-#     return jsonify(shows_list)
-
 @app.route('/api/book_tickets', methods=['POST'])
 def book_tickets():
     data = request.json
@@ -354,12 +384,17 @@ def book_tickets():
     theater_id = data.get('theatreId') 
     num_tickets = data.get('numTickets')
 
-    userid = current_user.id
-
-    new_booking = Bookings(user_id = userid, show_id = show_id, movie=movie_id, theatre_id=theater_id, nos = num_tickets)
-    db.session.add(new_booking)
     show = Shows.query.filter_by(id=show_id).first()
     show.tickets -= num_tickets
+    total = num_tickets*(show.price)
+
+    movie = Movies.query.filter_by(id=movie_id).first()
+    movie.popularity+=num_tickets
+
+    userid = current_user.id
+
+    new_booking = Bookings(user_id = userid, show_id = show_id, movie=movie_id, theatre_id=theater_id, nos = num_tickets, cost = total)
+    db.session.add(new_booking)
     db.session.add(show)
     db.session.commit()
 
@@ -430,7 +465,8 @@ def all_shows():
                 'starttime': show.starttime,
                 'tickets': show.tickets,
                 'theatreId': show.theatre_id,
-                'theatreName': show.theatre.name
+                'theatreName': show.theatre.name,
+                'price': show.price
             }
             shows_list.append(show_data)
     return jsonify(shows_list)
@@ -474,44 +510,21 @@ def e_theatre():
 def remove_theatre():
     data = request.json
     theatre_id = data.get('theatreId')
-    # Retrieve the theatre from the database
-    theatre = Theatres.query.get_or_404(theatre_id)
 
-    # Delete associated shows for the theatre
+    theatre = Theatres.query.get_or_404(theatre_id)
     shows = Shows.query.filter_by(theatre_id=theatre_id).all()
     for show in shows:
-        # Delete associated bookings for each show
         bookings = Bookings.query.filter_by(show_id=show.id).all()
         for booking in bookings:
             db.session.delete(booking)
 
         db.session.delete(show)
 
-    # Delete the theatre itself
-    db.session.delete(theatre)
 
-    # Commit the changes to the database
+    db.session.delete(theatre)
     db.session.commit()
 
     return jsonify({"message": f"Theatre with ID {theatre_id} and its associated shows and bookings have been removed successfully."})
-
-
-
-# @app.route('/api/remove_theatre', methods=['POST'])
-# def remove_theatre():
-#     data = request.json
-
-#     theatre_id = data.get('theatreId')
-
-#     theatre = Theatres.query.filter_by(id=theatre_id).first()
-#     db.session.delete(theatre)
-#     db.session.commit()
-
-#     response = {
-#         'message': 'Theatre removed successfully!'
-#     }
-
-#     return jsonify(response)
 
 @app.route('/api/add_movie', methods=['POST'])
 def add_movie():
@@ -519,12 +532,16 @@ def add_movie():
 
     movie_name = data.get('movieName')
     movie_desc = data.get('movieDesc')
+    movie_genre = data.get('movieGenre')
+    movie_rating = data.get('movieRating')
+    
+
     file = request.files['file']
     filename = secure_filename(file.filename)
 
     file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    new_movie = Movies(name=movie_name, desc=movie_desc, img=filename)
+    new_movie = Movies(name=movie_name, desc=movie_desc, img=filename, genre = movie_genre, rating = movie_rating)
     db.session.add(new_movie)
     db.session.commit()
 
@@ -561,12 +578,13 @@ def add_show():
     stime = data.get('startTime')
     show_tickets = data.get('tickets')
     show_movie = data.get('showMovieId')
+    show_price = data.get('price')
     show_theatre = data.get('theatreId')
 
     show_time = datetime.strptime(stime, "%Y-%m-%dT%H:%M")
     show_date = show_time.date()
 
-    new_show = Shows(tickets=show_tickets, starttime = show_time, date = show_date, movie_id = show_movie, theatre_id = show_theatre)
+    new_show = Shows(tickets=show_tickets, starttime = show_time, date = show_date, movie_id = show_movie, theatre_id = show_theatre, price = show_price)
     db.session.add(new_show)
     db.session.commit()
 
@@ -580,18 +598,15 @@ def add_show():
 def remove_show():
     data = request.json
     show_id = data.get('showId')
-    # Retrieve the show from the database
     show = Shows.query.get_or_404(show_id)
 
-    # Delete associated bookings for the show
+
     bookings = Bookings.query.filter_by(show_id=show_id).all()
     for booking in bookings:
         db.session.delete(booking)
 
-    # Delete the show itself
     db.session.delete(show)
 
-    # Commit the changes to the database
     db.session.commit()
 
     return jsonify({"message": f"Show with ID {show_id} and its associated bookings have been removed successfully."})
@@ -608,7 +623,8 @@ def my_bookings():
             'theatre': booking.theatre.name,
             'tickets': booking.nos,
             'starttime': booking.show.starttime,
-            'img': booking.show.movie.img
+            'img': booking.show.movie.img,
+            'total': booking.cost
         }
         booking_list.append(bk_data)
     return jsonify(booking_list)

@@ -47,13 +47,14 @@
       <div v-for="show in ushows" :key="show.id" class="border p-3 mb-3">
         <div class="row">
           <div class="col-md-2">
-            <img :src="'static/uploads/' + show.img" alt="Movie Image" class="img-fluid w-50 ms-5">
+            <img :src="'static/uploads/' + show.img" alt="Movie Image" class="img-fluid w-75 ms-5">
           </div>
           <div class="col-md-10">
             <h5>Movie: { show.movie }</h5>
             <p>Theatre: { show.theatre }</p>
             <p>Tickets: { show.tickets }</p>
             <p>Time: { show.starttime }</p>
+            <p>Total: ₹{ show.total }</p>
           </div>
       </div>
     </div>
