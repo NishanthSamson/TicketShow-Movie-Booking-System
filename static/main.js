@@ -76,15 +76,6 @@ var app = new Vue({
             console.error(error);
           });
       },
-      // fetchShows() {
-      //   axios.get('/api/shows')
-      //     .then(response => {
-      //       this.shows = response.data;
-      //     })
-      //     .catch(error => {
-      //       console.error(error);
-      //     });
-      // },
       addTheatre() {
         axios.post('/api/add_theatre', {
           theatreName: this.newTheatreName

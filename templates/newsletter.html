@@ -3,17 +3,9 @@
     <h1>Monthly Newsletter</h1>
     <p>Check out the latest movies:</p>
     <ul>
-        
-            <li>Transformers</li>
-        
-            <li>Terminator</li>
-        
-            <li>Jumanji</li>
-        
-            <li>Toy Story 4</li>
-        
-            <li>Jaws 2</li>
-        
+        {% for movie in movies %}
+            <li>{{ movie.name }}</li>
+        {% endfor %}
     </ul>
 </body>
 </html>

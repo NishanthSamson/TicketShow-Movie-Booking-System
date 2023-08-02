@@ -12,8 +12,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import matplotlib.pyplot as plt
-from flask_caching import Cache
-import csv
 import pandas as pd
 import os
 
@@ -26,7 +24,6 @@ app.config['SECURITY_PASSWORD_SALT'] = 'SALT'
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
-cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 db = SQLAlchemy(app)
   
 class RolesUsers(db.Model):
@@ -61,7 +58,7 @@ class User(db.Model, UserMixin):
     )
 
 class Movies(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True) #nullable
     name = db.Column(db.String(200), nullable=False)
     img = db.Column(db.String(300))
     genre = db.Column(db.String(50))
@@ -115,7 +112,7 @@ def send_daily_reminder():
             if(user.email!='admin@gmail.com'):
                 email_address = user.email
                 email_subject = 'Daily Reminder'
-                email_body = 'This is a reminder to complete your tasks today!'
+                email_body = 'This is a reminder to book your tickets today!'
                 send_email(email_address, email_subject, email_body)
 
 @celery.task
@@ -200,11 +197,10 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated and current_user.email == 'admin@gmail.com':
-        return redirect(url_for('admin'))
     return render_template('login.html')
     
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
 
@@ -222,7 +218,7 @@ def dashboard():
     plt.bar(movielist, bookingslist)
     plt.xlabel('Movie Name')
     plt.ylabel('Number of Bookings')
-    plt.title('Top 5 Movies by Number of Bookings')
+    plt.title('Top 10 Movies by Number of Bookings')
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig('static/histogram.png')
@@ -264,6 +260,8 @@ def manage(theatre_id):
 
 @app.route('/admin/download_data', methods=['GET'])
 def download_data():
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
     mlist = []
     poplist = []
     for movie in Movies.query.all() :
@@ -274,7 +272,6 @@ def download_data():
         'No of Bookings': poplist
     }
     df = pd.DataFrame(data)
-
 
     csv_data = df.to_csv(index=False)
     response = Response(csv_data, content_type='text/csv')
@@ -289,9 +286,7 @@ def register():
             password=hash_password(request.form.get('password'))
         )
         db.session.commit()
-
         return redirect(url_for('account'))
-
     return render_template('register.html')
 
 
@@ -316,6 +311,7 @@ def booking():
     return render_template('booking.html')
 
 @app.route('/accprofilepic', methods=['GET','POST'])
+@login_required
 def accprofilepic():
     return render_template('profilepic.html')
 
@@ -327,22 +323,21 @@ def mybookings():
 
 @app.route('/search/results', methods=['GET'])
 def search_results():
-    # Retrieve the query string from the URL parameters
     query_string = request.args.get('query', '')
-    
-    # Query the database based on the query string
     movies = Movies.query.filter(Movies.name.ilike(f"%{query_string}%")).all()
-    
-    # Pass the search results data to the 'results.html' template
     return render_template('results.html', movies=movies)
 
 @app.route('/edit_theatre/<int:theatre_id>', methods=['GET','POST'])
 def edit_theatre(theatre_id):
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
     theatre = Theatres.query.get_or_404(theatre_id)
     return render_template('edittheatre.html', theatre=theatre)
 
 @app.route('/edit_movie/<int:movie_id>', methods=['GET','POST'])
 def edit_movie(movie_id):
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
     movie = Movies.query.get_or_404(movie_id)
     return render_template('editmovies.html', movie=movie)
 
@@ -362,7 +357,6 @@ def get_movies():
 
 
 @app.route('/api/theaters', methods=['GET'])
-@cache.cached(timeout=3600)
 def get_theatres():
     theatres = Theatres.query.all()
     theatre_list = []
@@ -376,6 +370,7 @@ def get_theatres():
     return jsonify(theatre_list)
 
 @app.route('/api/book_tickets', methods=['POST'])
+@login_required
 def book_tickets():
     data = request.json
 
@@ -405,6 +400,7 @@ def book_tickets():
     return jsonify(response)
 
 @app.route('/api/update_profile', methods=['POST'])
+@login_required
 def update_profile():
     data = request.json
 
@@ -445,7 +441,6 @@ def profilepic():
     response = {
         'message': 'Profile Picture Updated successfully!'
     }
-
     return jsonify(response)
 
 @app.route('/api/allshows', methods=['POST'])
@@ -613,6 +608,7 @@ def remove_show():
 
 
 @app.route('/api/my_bookings', methods = ['GET'])
+@login_required
 def my_bookings():
     user_id = current_user.id
     bookings = Bookings.query.filter_by(user_id = user_id).all()
@@ -631,11 +627,15 @@ def my_bookings():
 
 @app.route('/send_reminder')
 def send_reminder():
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
     send_daily_reminder.delay()
-    return 'Reminder task sent!'
+    return 'Daily reminder sent!'
 
 @app.route('/send_newsletter')
 def send_newsletter():
+    if not current_user.is_authenticated or current_user.email != 'admin@gmail.com':
+        return abort(403)
     send_monthly_newsletter.delay()
     return 'Newsletter sent!'
 
