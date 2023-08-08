@@ -77,9 +77,13 @@ var app = new Vue({
           });
       },
       addTheatre() {
-        axios.post('/api/add_theatre', {
-          theatreName: this.newTheatreName
-        })
+        const formData = new FormData();
+
+        formData.append('theatreName', this.newTheatreName);
+        formData.append('theatreDesc', this.newTheatreDesc);
+        formData.append('file', this.selectedFile);
+
+        axios.post('/api/add_theatre', formData)
           .then(response => {
             console.log(response.data);
           })
@@ -139,6 +143,17 @@ var app = new Vue({
               console.error(error);
             });
         },
+        removeMovie(MovieId) {
+          axios.post('/api/remove_movie', {
+            movieId: MovieId
+          })
+            .then(response => {
+              console.log(response.data);
+            })
+            .catch(error => {
+              console.error(error);
+              });
+      },
       addShow(TheatreId) {
         axios.post('/api/add_show', {
           showMovieId: this.newShowMovieId,
@@ -245,6 +260,12 @@ var app = new Vue({
       },
         getMovieURL(movieId) {
           return `/movie/${movieId}/view/`;
+        },
+        getTheatreURL(theatreId) {
+          return `/theatre/${theatreId}/view/`;
+        },
+        exportCSV(theatreId) {
+          window.location.href = `/export_theatre_csv/${theatreId}`;
         },
         bookMovie(movieId) {
           this.selectedMovie = movieId;

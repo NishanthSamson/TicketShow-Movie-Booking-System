@@ -51,6 +51,8 @@
     <form method="POST" @submit.prevent="addTheatre">
       <div class="input-group mb-3">
         <input type="text" class="form-control" v-model="newTheatreName" placeholder="Theatre Name" required>
+        <input type="text" class="form-control" v-model="newTheatreDesc" placeholder="Theatre Description" required>
+        <input type="file" ref="fileInput" @change="handleFileChange" class="form-control" placeholder="Theatre Poster">
         <button class="btn btn-primary" type="submit">Add</button>
       </div>
     </form>

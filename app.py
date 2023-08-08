@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, abort, render_template_string, Response
+from flask import Flask, render_template, request, url_for, redirect, jsonify, abort, render_template_string, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, login_required, current_user, UserMixin, RoleMixin, logout_user
 from flask_security.utils import hash_password
@@ -13,6 +13,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import matplotlib.pyplot as plt
 import pandas as pd
+import csv
 import os
 
 
@@ -22,6 +23,8 @@ app.config['SECRET_KEY'] = 'MAD2PROJECT'
 app.config['UPLOAD_FOLDER'] = 'static\\uploads'
 app.config['SECURITY_PASSWORD_SALT'] = 'SALT'
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['result_backend'] = 'redis://localhost:6379/1'
+app.config['timezone'] = 'Asia/Kolkata'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 db = SQLAlchemy(app)
@@ -69,6 +72,8 @@ class Movies(db.Model):
 class Theatres(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
+    img = db.Column(db.String(300))
+    desc = db.Column(db.String(1000))
 
 class Bookings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -99,9 +104,16 @@ security = Security(app, user_datastore)
 
 with app.app_context():
     db.create_all()
+    ADMIN_ROLE_NAME = 'admin'
+    admin_role = Role.query.filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME, description='Administrator role')
+        db.session.add(admin_role)
+        db.session.commit()
     a = user_datastore.find_user(email='admin@gmail.com')
-    if not a:
-        user_datastore.create_user(email='admin@gmail.com', password=hash_password('123'))
+    if a is None:
+        user_datastore.create_user(email='admin@gmail.com', password=hash_password('123'), roles=[admin_role])
+        db.session.commit()
 
 
 @celery.task
@@ -124,7 +136,20 @@ def send_monthly_newsletter():
                 email_address = user.email
                 email_subject = 'Monthly Newsletter'
                 email_body = generate_newsletter()
-                send_news(email_address, email_subject, email_body)           
+                send_news(email_address, email_subject, email_body)
+
+@celery.task
+def export_csv(theatre_id):
+    with app.app_context():
+        csv_data = generate_theatre_csv(theatre_id)
+        filename = f'theatre_{theatre_id}_export.csv'
+
+        with open(os.path.join(app.static_folder, filename), 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerows(csv_data)
+
+        return filename
+
 
 def generate_newsletter():
     with open('templates/newsletter.html', 'r') as file:
@@ -178,10 +203,25 @@ def send_news(to_address, subject, body):
     except Exception as e:
         print('Failed to send reminder email:', str(e))
 
+def generate_theatre_csv(theatre_id):
+    theatre = Theatres.query.get(theatre_id)
+    shows = theatre.shows
+    bookings = theatre.bookings
+
+    csv_data = [['Show Date', 'Show Time', 'Number of Bookings']]
+
+    for show in shows:
+        show_date = show.starttime.strftime('%Y-%m-%d')
+        show_time = show.starttime.strftime('%H:%M:%S')
+        num_bookings = len([booking for booking in bookings if booking.show_id == show.id])
+        csv_data.append([show_date, show_time, num_bookings])
+
+    return csv_data
+
 celery.conf.beat_schedule = {
     'send-daily-reminder': {
         'task': 'app.send_daily_reminder',
-        'schedule': crontab(hour=8, minute=0),
+        'schedule': crontab(hour=8, minute=30),
     },
     'send-monthly-newsletter': {
         'task': 'app.send_monthly_newsletter',
@@ -301,6 +341,16 @@ def view_movie(movie_id):
     movie = Movies.query.get_or_404(movie_id)
     return render_template('movies.html', movie=movie)
 
+@app.route('/theatre/<int:theatre_id>/view/', methods=('GET', 'POST'))
+@login_required
+def view_theatre(theatre_id):
+    theatre = Theatres.query.get_or_404(theatre_id)
+    if request.method == 'POST':
+        theatre_id = int(request.form.get('theatre_id'))
+        user_email = current_user.email
+        export_theatre_csv.delay(theatre_id, user_email)
+    return render_template('theatres.html', theatre=theatre)
+
 @app.route('/movies', methods=('GET', 'POST'))
 def movies():
     return render_template('allmovies.html')
@@ -325,7 +375,9 @@ def mybookings():
 def search_results():
     query_string = request.args.get('query', '')
     movies = Movies.query.filter(Movies.name.ilike(f"%{query_string}%")).all()
-    return render_template('results.html', movies=movies)
+    tmovies = Movies.query.filter(Movies.genre.ilike(f"%{query_string}%")).all()
+    theatres = Theatres.query.filter(Theatres.name.ilike(f"%{query_string}%")).all()
+    return render_template('results.html', movies=movies, theatres=theatres, tmovies=tmovies)
 
 @app.route('/edit_theatre/<int:theatre_id>', methods=['GET','POST'])
 def edit_theatre(theatre_id):
@@ -364,6 +416,7 @@ def get_theatres():
         theatre_data = {
             'id': theatre.id,
             'name': theatre.name,
+            'img' : theatre.img,
             'shows': serialize_shows(theatre.shows)
         }
         theatre_list.append(theatre_data)
@@ -468,11 +521,17 @@ def all_shows():
 
 @app.route('/api/add_theatre', methods=['POST'])
 def add_theatre():
-    data = request.json
+    data = request.form
 
     theatre_name = data.get('theatreName')
+    theatre_desc = data.get('theatreDesc')
 
-    new_theatre = Theatres(name=theatre_name)
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    new_theatre = Theatres(name=theatre_name, desc=theatre_desc, img=filename)
     db.session.add(new_theatre)
     db.session.commit()
 
@@ -566,6 +625,26 @@ def e_movie():
 
     return jsonify(response)
 
+@app.route('/api/remove_movie', methods=['GET','POST'])
+def remove_movie():
+    data = request.json
+    movie_id = data.get('movieId')
+
+    movie = Movies.query.get_or_404(movie_id)
+    shows = Shows.query.filter_by(movie_id=movie_id).all()
+    for show in shows:
+        bookings = Bookings.query.filter_by(show_id=show.id).all()
+        for booking in bookings:
+            db.session.delete(booking)
+
+        db.session.delete(show)
+
+
+    db.session.delete(movie)
+    db.session.commit()
+
+    return jsonify({"message": f"Movie with ID {movie_id} and its associated shows and bookings have been removed successfully."})
+
 @app.route('/api/add_show', methods=['POST'])
 def add_show():
     data = request.json
@@ -638,6 +717,21 @@ def send_newsletter():
         return abort(403)
     send_monthly_newsletter.delay()
     return 'Newsletter sent!'
+
+@app.route('/export_theatre_csv/<int:theatre_id>', methods=['GET'])
+@login_required
+def export_theatre_csv(theatre_id):
+    with app.app_context():
+        filename = export_csv.delay(theatre_id).get()
+        return jsonify({'message': f'CSV export for Theatre {theatre_id} is ready.',
+                        'download_link': url_for('download_csv', filename=filename, _external=True)})
+
+@app.route('/download_csv/<filename>', methods=['GET'])
+@login_required
+def download_csv(filename):
+    filepath = os.path.join(app.static_folder, filename)
+    return send_file(filepath, as_attachment=True)
+
 
 def serialize_shows(shows):
     serialized_shows = []

@@ -1,0 +1,309 @@
+swagger: '2.0'
+info:
+  title: Ticket Show API
+  description: API for managing movies, theatres, bookings, and more.
+  version: 1.0.0
+basePath: /
+schemes:
+  - http
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /api/movies:
+    get:
+      summary: Get a list of all movies.
+      responses:
+        200:
+          description: Successful response with a list of movies.
+  /api/theaters:
+    get:
+      summary: Get a list of all theatres and their shows.
+      responses:
+        200:
+          description: Successful response with a list of theatres and their shows.
+  /api/book_tickets:
+    post:
+      summary: Book tickets for a show.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with show, movie, theatre, and number of tickets.
+          required: true
+          schema:
+            type: object
+            properties:
+              showId:
+                type: integer
+              movieId:
+                type: integer
+              theatreId:
+                type: integer
+              numTickets:
+                type: integer
+      responses:
+        200:
+          description: Successful booking response.
+  /api/update_profile:
+    post:
+      summary: Update user profile details.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with updated profile details.
+          required: true
+          schema:
+            type: object
+            properties:
+              uName:
+                type: string
+              uPhone:
+                type: integer
+              uGender:
+                type: string
+              uAddress:
+                type: string
+      responses:
+        200:
+          description: Successful profile update response.
+  /api/profilepic/:
+    post:
+      summary: Update user profile picture.
+      parameters:
+        - name: file
+          in: formData
+          description: Profile picture file.
+          required: true
+          type: file
+      responses:
+        200:
+          description: Successful profile picture update response.
+  /api/allshows:
+    post:
+      summary: Get available shows for a movie on a specific date.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with movie ID, date, and number of tickets.
+          required: true
+          schema:
+            type: object
+            properties:
+              movieId:
+                type: integer
+              date:
+                type: string
+              numTickets:
+                type: integer
+      responses:
+        200:
+          description: Successful response with a list of available shows.
+  /api/add_theatre:
+    post:
+      summary: Add a new theatre.
+      parameters:
+        - name: theatreName
+          in: formData
+          description: Name of the new theatre.
+          required: true
+          type: string
+        - name: theatreDesc
+          in: formData
+          description: Description of the new theatre.
+          required: true
+          type: string
+        - name: file
+          in: formData
+          description: Theatre image file.
+          required: true
+          type: file
+      responses:
+        200:
+          description: Successful theatre addition response.
+  /api/edit_theatre:
+    post:
+      summary: Edit an existing theatre.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with theatre ID and updated theatre name.
+          required: true
+          schema:
+            type: object
+            properties:
+              theatreId:
+                type: integer
+              theatreName:
+                type: string
+      responses:
+        200:
+          description: Successful theatre edit response.
+  /api/remove_theatre:
+    post:
+      summary: Remove a theatre.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with theatre ID.
+          required: true
+          schema:
+            type: object
+            properties:
+              theatreId:
+                type: integer
+      responses:
+        200:
+          description: Successful theatre removal response.
+# ... (previous YAML content)
+
+  /api/add_movie:
+    post:
+      summary: Add a new movie.
+      parameters:
+        - name: movieName
+          in: formData
+          description: Name of the new movie.
+          required: true
+          type: string
+        - name: movieDesc
+          in: formData
+          description: Description of the new movie.
+          required: true
+          type: string
+        - name: movieGenre
+          in: formData
+          description: Genre of the new movie.
+          required: true
+          type: string
+        - name: movieRating
+          in: formData
+          description: Rating of the new movie.
+          required: true
+          type: number
+        - name: file
+          in: formData
+          description: Movie image file.
+          required: true
+          type: file
+      responses:
+        200:
+          description: Successful movie addition response.
+  /api/edit_movie:
+    post:
+      summary: Edit an existing movie.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with movie ID, updated movie name, and description.
+          required: true
+          schema:
+            type: object
+            properties:
+              movieId:
+                type: integer
+              movieName:
+                type: string
+              movieDesc:
+                type: string
+      responses:
+        200:
+          description: Successful movie edit response.
+  /api/remove_movie:
+    post:
+      summary: Remove a movie.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with movie ID.
+          required: true
+          schema:
+            type: object
+            properties:
+              movieId:
+                type: integer
+      responses:
+        200:
+          description: Successful movie removal response.
+  /api/add_show:
+    post:
+      summary: Add a new show for a movie.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with show details.
+          required: true
+          schema:
+            type: object
+            properties:
+              startTime:
+                type: string
+              tickets:
+                type: integer
+              showMovieId:
+                type: integer
+              price:
+                type: integer
+              theatreId:
+                type: integer
+      responses:
+        200:
+          description: Successful show addition response.
+  /api/remove_show:
+    post:
+      summary: Remove a show.
+      parameters:
+        - name: request
+          in: body
+          description: Request body with show ID.
+          required: true
+          schema:
+            type: object
+            properties:
+              showId:
+                type: integer
+      responses:
+        200:
+          description: Successful show removal response.
+  /api/my_bookings:
+    get:
+      summary: Get bookings made by the current user.
+      responses:
+        200:
+          description: Successful response with a list of user's bookings.
+  /send_reminder:
+    get:
+      summary: Send a daily reminder (admin-only).
+      responses:
+        200:
+          description: Daily reminder sent successfully.
+  /send_newsletter:
+    get:
+      summary: Send a monthly newsletter (admin-only).
+      responses:
+        200:
+          description: Newsletter sent successfully.
+  /export_theatre_csv/{theatre_id}:
+    get:
+      summary: Export theatre data as CSV (admin-only).
+      parameters:
+        - name: theatre_id
+          in: path
+          description: ID of the theatre to export data for.
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Successful response with download link for the exported CSV.
+  /download_csv/{filename}:
+    get:
+      summary: Download a CSV file (admin-only).
+      parameters:
+        - name: filename
+          in: path
+          description: Name of the CSV file to download.
+          required: true
+          type: string
+      responses:
+        200:
+          description: Successful response with the downloadable CSV file.

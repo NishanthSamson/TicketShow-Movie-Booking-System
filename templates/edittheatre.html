@@ -1,6 +1,6 @@
 <div id='app'>
 <form method="post" @submit.prevent="editTheatre({{theatre.id}})">
-    <input type ="text" v-model="theatreName">
+    <input type ="text" v-model="theatreName" required>
     <button type="submit">Save</button>
 </form>
 </div>

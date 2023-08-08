@@ -39,6 +39,7 @@
             <div class="d-flex justify-content-between">
               <a :href="`/edit_movie/${movie.id}`">
               <button class="btn btn-secondary" @click="editMovie(movie.id)">Edit Details</button></a>
+              <button class="btn btn-secondary" @click="removeMovie(movie.id)">Remove</button>
             </div>
           </div>
         </div>
