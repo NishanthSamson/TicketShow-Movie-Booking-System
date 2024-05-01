@@ -18,22 +18,6 @@ The my_bookings API fetches and returns user movie bookings.
 There are also several APIs for the purpose of adding, removing and editing the details of 
 Theatres, movies and shows. The app also has several routes for performing tasks efficiently.
 
-<h3>Instructions</h3>
-<ol>
-  <li>Clone this repo</li>
-    &nbsp&nbsp&nbsp&nbsp git clone "https://github.com/NishanthSamson/TicketShow-Movie-Booking-System"
-  <li>CD to the project directory</li>
-  <li>Install dependencies</li>
-    &nbsp&nbsp&nbsp&nbsp pip install -r requirements.txt
-  <li>Intialize the Redis server through Redis-CLI</li>
-    &nbsp&nbsp&nbsp&nbsp $ redis-cli
-  <li>Intialize celery beat and worker</li>
-    &nbsp&nbsp&nbsp&nbsp python -m celery -A app.celery worker --pool=solo -l info<br>
-    &nbsp&nbsp&nbsp&nbsp python -m celery -A app.celery beat --loglevel=info
-  <li>Run the Flask application</li>
-    &nbsp&nbsp&nbsp&nbsp python -m flask run app.py
-</ol>
-
 <h3>Screenshots</h3>
 <img src="https://raw.githubusercontent.com/NishanthSamson/TicketShow-Movie-Booking-System/main/Screenshots/Screenshot%20(622).png" width="610" height="330"><br>
 <img src="https://raw.githubusercontent.com/NishanthSamson/TicketShow-Movie-Booking-System/main/Screenshots/Screenshot%20(623).png" width="610" height="330">
